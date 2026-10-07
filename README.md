@@ -1,1 +1,1 @@
-# EKS-memos-deployment
+# EKS-app-deployment
