@@ -1,0 +1,102 @@
+services:
+  vote:
+    build: ./vote
+    healthcheck: 
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - frontend
+      - backend
+    ports:
+      - 8080:80
+    depends_on:
+      redis:
+        condition: service_healthy
+  result:
+    build: ./result
+    networks:
+      - frontend
+      - backend
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+  worker:
+    build: ./worker
+    networks:
+      - backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+  redis:
+    image: redis:7
+    volumes:
+      - ./healthchecks:/healthchecks
+    #command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "/healthchecks/redis.sh"]
+      # interval: 5s
+      # timeout: 3s
+      # retries: 5
+    networks:
+      - backend
+  db:
+    image: dhi.io/postgres:18
+    restart: always
+    user: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    expose:
+      - 5432
+    volumes:
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: ["CMD", "/healthchecks/postgres.sh"]
+      # test: ["CMD", "pg_isready"]
+      # interval: 10s
+      # timeout: 5s
+      # retries: 5
+    networks:
+      - backend
+  seed-data:
+    build: ./seed-data
+    profiles: ["seed-data"]
+    depends_on:
+      vote:
+        condition: service_healthy 
+    networks:
+      - frontend
+    restart: "no"
+
+volumes:
+  db-data:
+  redis-data:
+networks:
+  frontend:
+  backend:
+      
+
+
+
+
+  
+
+
+
+
+    # Specify driver options
+  #   driver: bridge
+  #   driver_opts:
+  #     com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
+  # backend:
+  #   # Use a custom driver
+  #   driver: custom-driver
